@@ -28,9 +28,13 @@
 # 2. Kiến trúc của CSI?
 - CSI được chia thành một số kiến trúc thiết kế xác định cách triển khai các plugin như thế nào. Các kiến ​​trúc phù hợp với các triển khai CO điển hình có máy chủ chính (master host) và máy chủ nút (node host). Có 3 tình huống xảy ra như sau:
     - Master/Node với các plugin riêng rẽ cho cả bộ điều khiển và chức năng node.
+    
      <img src="./imgs/scenario1.png">
+    
     - "Headless" trong đó các plugin vẫn chạy riêng rẽ cho bộ điều khiển và node nhưng chỉ chạy trên máy chủ node.
+    
     <img src="./imgs/scenario2.png">
+
     - Headless kết hợp, trong đó một plugin cung cấp bộ điều khiển và các khả năng node cùng nhau.
 # 3. Container Storage Interface
 *Phần này chủ yếu mô tả giao diện giữa các CO và các Plugin*
@@ -168,13 +172,43 @@ service Node {
 - Nếu như plugin không thể hoàn thành NodeStageVolume, nó phải trả về mã non-ok gRPCtrong trạng thái gRPC.
 ### 2. NodeUnstageVolume
 - Một Plugin Node phải thực hiện cuộc gọi RPC nếu nó có khả năng Node STAGE_UNSTAGE_VOLUME.
-
+- RPC này là hoạt động ngược lại của NodeStageVolume. RPC này phải hoàn tác công việc bằng NodeStageVolume tương ứng. RPC nên được CO gọi một lần cho mỗi staging_target_path đã được thiết lập thành công qua NodeStageVolume.
+- Nếu Plugin điều khiển tương ứng có PUBLISH_UNPUBLISH_VOLUME và Plugin Node có STAGE_UNSTAGE_VOLUME, CO phải đảm bảo RPC này được gọi và trả về thành công trước khi gọi ControllerUnpublishVolume cho node và volume đã cho. 
+- RPC này CÓ THỂ được gọi bởi CO khi khối lượng công việc sử dụng volume đang được chuyển đến một nút khác hoặc tất cả khối lượng công việc sử dụng volume trên một nút đã kết thúc.
+- Nếu RPC thất bại hoặc CO không biết liệu có thất bại hay không, có thể chọn NodeUnstageVolume lần nữa.
+- Nếu như plugin không thể hoàn thành NodeUnStageVolume, nó phải trả về mã non-ok gRPCtrong trạng thái gRPC.
 ### 3. NodePublishVolume
+- RPC này được gọi bởi CO khi một khối lượng công việc muốn sử dụng volume được chỉ định được đặt (theo lịch trình) trên một node.
+- Nếu Plugin điều khiển có PUBLISH_UNPUBLISH_VOLUME, CO phải đảm bảo rằng RPC được gọi sau khi ControllerPublishVolume được gọi cho volume cho trước và trả về thành công.
+- Nếu RPC thất bại hoặc CO không biết liệu có thất bại hay không, có thể chọn NodeStageVolume lần nữa hoặc gọi NodeUnpublishVolume.
+- RPC có thể được gọi bởi CO nhiều lần trong cùng một node cho cùng volume với `target_path` có thể khác nhau và/hoặc các đối số khác nếu volume hỗ trợ chế độ truy cập MULTI_NODE_ hoặc SINGLE_MULTI_WRITER.
+CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity khác. Nếu điều này xảy ra, Plugin nên trả về FAILED_PRECONDITION.
+- Nếu như plugin không thể hoàn thành NodePublishVolume, nó phải trả về mã non-ok gRPCtrong trạng thái gRPC.
 ### 4. NodeUnpublishVolume
+- Một Node Plugin phải thực hiện gọi RPC. Đây là hoạt động ngược lại với NodePublishVolume. RPC phải hoàn tác công việc bởi NodePublishVolume tương ứng. RPC nên được gọi bởi CO ít nhất một lần cho từng target_path được thiết lập thành công thông qua NodePublishVolume. Nếu như Plugin điều khiển tương ứng có PUBLLISH_UNPUBLISH_VOLUME, CO nên phát hành tất cả NodeUnpublishVolume trước hi gọi ControllerUnpublishVolume cho node và volume cho trước. Plugin nên giả định rnawgf RPC sẽ được thực thi trong node mà volume đang được sử dụng.
+- RPC này thường được gọi bởi CO khi khối lượng công việc sử dụng volume đang được chuyển đến một node khác hoặc tất cả khối lượng công việc sử dụng volume trên một node đã kết thúc.
+- Hành động này phải là `idempotent` Nếu RPC thất bại, hoặc CO không biết liệu có thất bại hay không, nên chọn gọi NodeUnpublishVolume lần nữa. 
+- Nếu như plugin không thể hoàn thành NodeUnpublishVolume, nó phải trả về mã non-ok gRPCtrong trạng thái gRPC.
 ### 5. NodeGetVolumeStats
+- Một Node Plugin phải thực hiện gọi RPC nếu nó có GET_VOLUME_STATS hoặc VOLUME_CONDITION. Gọi NodeGetVolumeStats trả về thống kê dung lượng volume có sẵn cho volume.
+- Nếu volume đang được sử dụng ở chế độ BlockVolume sau dó `used` và `available` có thể bị bỏ qua từ trường `usage` của NodeGetVolumeStatsResponse. Tương tự, thông tin inode cũng có thể bị bỏ qua từ NodeGetVolumeStatsResponse khi không có sẵn.
+- Trường staging_target_path không được yêu cầu nhưng CO nên cung cấp. Các Plugin có thể sử dụng nó để xác định nếu volume_path là nơi xuất bản hoặc dàn dựng, và việc cài đặt trường này thành không trống cho phép plugin hoạt động với trạng thái được lưu trữ ít hơn trên node.
+- Nếu như plugin không thể hoàn thành NodeGetVolumeStats, nó phải trả về mã non-ok gRPC trong trạng thái gRPC.
 ### 6. NodeGetCapabilities
+- Một Node Plugin phải thực hiện gọi RPC. RPC cho phép CO kiểm tra khả năng được hỗ trợ của dịch vụ Node được cung cấp bởi Plugin.
+- Nếu như plugin không thể hoàn thành NodeGetCapabilities, nó phải trả về mã non-ok gRPC trong trạng thái gRPC.
 ### 7. NodeGetInfo
+- Một Node Plugin phải thực hiện gọi RPC nếu plugin có PUBLISH_UNPUBLISH_VOLUME. CO nên gọi RPC cho node muốn đặt workload. CO có thể gọi RPC nhiều lần cho node đã chọn tuy nhiên SP không mong đợi điều này. Kết quả của cuộc gọi này sẽ được sử dụng bởi CO trong ControllerPublishVolume.
+- Nếu như plugin không thể hoàn thành NodeGetInfo, nó phải trả về mã non-ok gRPC trong trạng thái gRPC.
 ### 8. NodeExpandVolume
+- Một Node Plugin phải thực hiện gọi RPC nếu plugin có EXPAND_VOLUME. Nó cho phép CO mở rộng volume trong một node. 
+- NodeExpandVolume chỉ hỗ trợ mở rộng các volume node-published hoặc node-staged trên volume_path đã cho.
+- Nếu plugin có STAGE_UNSTAGE_VOLUME sau đó:
+  - NodeExpandVolume phải được gọi sau khi NodeStageVolume thành công.
+  - NodeExpandVolume có thể được gọi trước hoặc sau NodePublishVolume.
+- Nếu không NodeExpandVolume phải được gọi sau khi NodePublishVolume thành công.
+- Nếu plugin chỉ hỗ trợ mở rộng thông qua VolumeExpansion.OFFLINE, sua đó volume phải được thực hiện offline trươc và mở rộng thông qua COntrollerExpandVolume và sua đó node-staged hoặc node-published trước khi nó được mở rộng bên trong node thông qua NodeExpandVolume.
+- Plugin có thể sử dụng trường staging_target_path để xác định nếu volume_path là nơi volume được xuất bản hoặc hoặc dàn dựng, và việc cài đặt trường này thành không trống cho phép plugin hoạt động với trạng thái được lưu trữ ít hơn trên node.
 ## 3.3 Identity Service RPC
 `Identity Service RPC` cho phép CO truy vấn một plugin về các khả năng, tình trạng và siêu dữ liệu khác. Quy trình chung của trường hợp thành công CÓ THỂ như sau:
 - 1. CO truy vấn siêu dữ liệu qua Identity RPC.
@@ -205,4 +239,5 @@ service Node {
 - Xác định giao thức plugin RECOMMENDATIONS:
     - Mô tả một quy trình người giám sát cấu hình một Plugin.
     - Cân nhắc triển khai vùng chứa. 
-# 5. CSI trong Kubernetes
+# 5. Giao thức trong CSI.
+
