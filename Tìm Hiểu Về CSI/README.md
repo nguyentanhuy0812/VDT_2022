@@ -1,6 +1,8 @@
 # Các Thuật Ngữ
 - Volume: Một đơn vị lưu trữ sẽ được cung cấp bên trong thùng chứa được quản lý bằng CO, thông qua CSI.
+
 - CO (Container Orchestration): Hệ thống điều phối vùng chứa, giao tiếp với các Plugin sử dụng các RPC dịch vụ CSI.
+<img src="./imgs/co.png">
 - SP(Storage Provider): Nhà cung cấp bộ nhớ, nhà cung cấp triển khai plugin CSI.
 - RPC: Gọi thủ tục từ xa. Là cơ chế giao tiếp giữa 2 tiến trình. Thực hiện lời gọi thủ tục trên tiến trình khác giống như lời gọi thủ tục trong một tiến trình cục bộ. 
 - Node: Máy chủ lưu trữ nơi khối lượng công việc của người dùng sẽ chạy, có thể nhận dạng duy nhất từ ​​quan điểm của một Plugin bằng ID nút.
@@ -36,7 +38,15 @@
     <img src="./imgs/scenario2.png">
 
     - Headless kết hợp, trong đó một plugin cung cấp bộ điều khiển và các khả năng node cùng nhau.
-# 3. Container Storage Interface
+  
+# 3. Vòng đời Volume (Volume Lifecycle)
+
+  <img src="./imgs/volume-lifecycle2.png">
+
+# 4. Container Storage Interface (CSI Driver)
+
+ <img src="./imgs/csi-driver.png">
+
 *Phần này chủ yếu mô tả giao diện giữa các CO và các Plugin*
 - RPC Interface:
     - Một CO tương tác với một Plugin thông qua RPCs. Mỗi SP phải cung cấp:
@@ -47,6 +57,10 @@
     - Dịch vụ nhận dạng (Identity service) - được thực hiện bởi cả Plugin điều khiển và Plugin Node.
     - Dịch vụ điều khiển (Controller service) - chạy trên Plugin điều khiển.
     - Dịch vụ Node (Node service) - được thực hiện bởi Plugin Node.
+
+- Sơ đồ dịch vụ:
+
+  <img src= "./imgs/service-diagram.png">
 
 ```
 service Identity {
@@ -131,7 +145,7 @@ service Node {
     returns (NodeGetInfoResponse) {}
 }
 ```
-## 3.1 Controller Service RPC
+## 4.1 Controller Service RPC
 ### 1. CreateVolume
 - Một Plugin điều khiển phải thực hiện lệnh gọi RPC nếu nó có khả năng điều khiển CREATE_DELETE_VOLUME. RPC này sẽ được CO gọi để cung cấp một volume mới thay mặt cho người dùng. 
 - Plugin có thể tạo 3 loại volume:
@@ -164,7 +178,7 @@ service Node {
 - Hành động này phải được `idempotent`. 
 - Nếu lỗi xảy ra trước khi snapshot, CreateSnapshot NÊN trả về mã lỗi gRPC tương ứng phản ánh tình trạng lỗi.
 - Snapshot CÓ THỂ được sử dụng làm nguồn để cung cấp volume mới. Thông báo CreateVolumeRequest CÓ THỂ chỉ định một tham số snapshot nguồn TÙY CHỌN. Hoàn nguyên snapshot, trong đó dữ liệu trong volume gốc bị xóa và được thay thế bằng dữ liệu trong snapshot, là một chức năng nâng cao không phải hệ thống lưu trữ nào cũng có thể hỗ trợ và do đó hiện đang nằm ngoài phạm vi.
-## 3.2 Node Service RPC
+## 4.2 Node Service RPC
 ### 1. NodeStageVolume.
 - Một Plugin Node phải thực hiện cuộc gọi RPC nếu nó có khả năng Node STAGE_UNSTAGE_VOLUME.
 - RPC này được gọi bởi CO trước khi volume được sử dụng bởi bất kỳ khối lượng công việc nào trên node bởi NodePublishVolume. RPC NÊN được gọi bởi CO khi một khối lượng công việc muốn sử dụng volume được chỉ định được đặt (đã lên lịch) trên node được chỉ định lần đầu tiên hoặc lần đầu tiên kể từ khi lệnh gọi NodeUnstageVolume cho volume được chỉ định được gọi và trả về thành công trên node đó.
@@ -185,7 +199,7 @@ service Node {
 CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity khác. Nếu điều này xảy ra, Plugin nên trả về FAILED_PRECONDITION.
 - Nếu như plugin không thể hoàn thành NodePublishVolume, nó phải trả về mã non-ok gRPCtrong trạng thái gRPC.
 ### 4. NodeUnpublishVolume
-- Một Node Plugin phải thực hiện gọi RPC. Đây là hoạt động ngược lại với NodePublishVolume. RPC phải hoàn tác công việc bởi NodePublishVolume tương ứng. RPC nên được gọi bởi CO ít nhất một lần cho từng target_path được thiết lập thành công thông qua NodePublishVolume. Nếu như Plugin điều khiển tương ứng có PUBLLISH_UNPUBLISH_VOLUME, CO nên phát hành tất cả NodeUnpublishVolume trước hi gọi ControllerUnpublishVolume cho node và volume cho trước. Plugin nên giả định rnawgf RPC sẽ được thực thi trong node mà volume đang được sử dụng.
+- Một Node Plugin phải thực hiện gọi RPC. Đây là hoạt động ngược lại với NodePublishVolume. RPC phải hoàn tác công việc bởi NodePublishVolume tương ứng. RPC nên được gọi bởi CO ít nhất một lần cho từng target_path được thiết lập thành công thông qua NodePublishVolume. Nếu như Plugin điều khiển tương ứng có PUBLLISH_UNPUBLISH_VOLUME, CO nên phát hành tất cả NodeUnpublishVolume trước khi gọi ControllerUnpublishVolume cho node và volume cho trước. Plugin nên giả định rnawgf RPC sẽ được thực thi trong node mà volume đang được sử dụng.
 - RPC này thường được gọi bởi CO khi khối lượng công việc sử dụng volume đang được chuyển đến một node khác hoặc tất cả khối lượng công việc sử dụng volume trên một node đã kết thúc.
 - Hành động này phải là `idempotent` Nếu RPC thất bại, hoặc CO không biết liệu có thất bại hay không, nên chọn gọi NodeUnpublishVolume lần nữa. 
 - Nếu như plugin không thể hoàn thành NodeUnpublishVolume, nó phải trả về mã non-ok gRPCtrong trạng thái gRPC.
@@ -209,7 +223,7 @@ CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity
 - Nếu không NodeExpandVolume phải được gọi sau khi NodePublishVolume thành công.
 - Nếu plugin chỉ hỗ trợ mở rộng thông qua VolumeExpansion.OFFLINE, sua đó volume phải được thực hiện offline trươc và mở rộng thông qua COntrollerExpandVolume và sua đó node-staged hoặc node-published trước khi nó được mở rộng bên trong node thông qua NodeExpandVolume.
 - Plugin có thể sử dụng trường staging_target_path để xác định nếu volume_path là nơi volume được xuất bản hoặc hoặc dàn dựng, và việc cài đặt trường này thành không trống cho phép plugin hoạt động với trạng thái được lưu trữ ít hơn trên node.
-## 3.3 Identity Service RPC
+## 4.3 Identity Service RPC
 `Identity Service RPC` cho phép CO truy vấn một plugin về các khả năng, tình trạng và siêu dữ liệu khác. Quy trình chung của trường hợp thành công CÓ THỂ như sau:
 - 1. CO truy vấn siêu dữ liệu qua Identity RPC.
 - 2. CO truy vấn khả năng có sẵn của plugin.
@@ -226,7 +240,7 @@ CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity
     - Thông báo cho người giám sát plugin.
 - Plugin CÓ THỂ xác minh rằng nó có cấu hình, thiết bị, phụ thuộc và trình điều khiển phù hợp để chạy và trả về thành công nếu xác thực thành công. CO có thể gọi RPC này bắt cứ khi nào. 
 - Nếu như plugin không thể hoàn thành Probe, nó phải trả về mã non-ok gRPCtrong trạng thái gRPC.
-# 4. Mục đích của CSI trong MVP (Minimum Viable Product).
+# 5. Mục đích của CSI trong MVP (Minimum Viable Product).
 Để xác định một tiêu chuẩn công nghiệp “Giao diện lưu trữ vùng chứa” (CSI) sẽ cho phép các nhà cung cấp dịch vụ lưu trữ (SP) phát triển một plugin một lần và để nó hoạt động trên một số hệ thống điều phối vùng chứa (CO).
 - Cho phép các tác giả SP viết một Plugin tuân thủ CSI “chỉ hoạt động” trên tất cả các CO triển khai CSI.
 - Xác định API (RPC) cho phép: 
@@ -239,5 +253,23 @@ CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity
 - Xác định giao thức plugin RECOMMENDATIONS:
     - Mô tả một quy trình người giám sát cấu hình một Plugin.
     - Cân nhắc triển khai vùng chứa. 
-# 5. Giao thức trong CSI.
+
+# 6. Giao thức trong CSI.
+## 1. Kết Nối
+- Một CO sẽ giao tiếp với một Plugin sử dụng gRPC để kết nối dịch vụ  `Identity` và `Controller`, `Node`.
+  - proto3 nên được sử dụng với gRPC.
+  - Tất cả Plugin sẽ thực hiện REQUIRED Identity service RPCs. Hỗ trợ cho OPTINAL RPCs được báo cáo bởi các lệnh gọi RPC ControllerGetCapabilities và NodeGetCapabilities.
+- CO sẽ cung cấp địa chỉ nghe cho Plugin bằng biến môi trường CSI_ENDPOINT. Các thành phần Plugin sẽ tạo, liên kết và lắng nghe RPCs theo địa chỉ nghe được chỉ định.
+  - chỉ UNIX Domain Sockets có thể được sử dụng như điểm cuối. Điều này có thể sẽ thay đổi trong phiên bản tương lai của thông số kỹ thuật này để hỗ trợ các nền tảng không phải UNIX
+- Tất cả các dịch vụ hỗ trợ RPC phải có sẵn ở địa chỉ nghe của Plugin.
+## 2. Bảo Mật
+- Người điều hành CO và Người giám sát plugin nên thực hiện các bước để đảm bảo rằng bất kỳ và tất cả thông tin liên lạc giữa CO và Dịch vụ plugin được bảo mật theo các phương pháp hay nhất.
+- Liên lạc giữa CO và Plugin sẽ được truyền thông qua UNIX Domain Sockets.
+  - gRPC tương thích với UNIX Domain Sockets; Nhà điều hành CO và Người giám sát plugin có trách nhiệm truy cập an toàn đúng cách vào Domain Socket bằng cách sử dụng ACL hệ thống tệp của hệ điều hành và/hoặc công cụ ngữ cảnh bảo mật dành riêng cho hệ điều hành khác.
+  - SP đang cung cấp thiết bị điều khiển plugin độc lập hoặc các thành phần từ xa khác không tương thích với UNIX Domain Socket PHẢI cung cấp cấu phần phần mềm proxy giao tiếp giữa UNIX Domain Socket và (các) thành phần từ xa. Các thành phần proxy vận chuyển thông tin liên lạc qua mạng IP SẼ chịu trách nhiệm bảo mật thông tin liên lạc qua các mạng đó.
+- Cả CO và Plugin nên tránh rò rỉ thông tin nhạy cảm
+## 3. Gỡ Lỗi
+- Gỡ lỗi và truy tìm được hỗ trợ bởi bên ngoài, Các phần bổ sung và phần mở rộng độc lập với CSI cho gRPC APIs, chẳng hạn như `OpenTracing`
+
+
 
