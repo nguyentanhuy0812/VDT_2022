@@ -2,13 +2,17 @@
 - Volume: Một đơn vị lưu trữ sẽ được cung cấp bên trong thùng chứa được quản lý bằng CO, thông qua CSI.
 
 - CO (Container Orchestration): Hệ thống điều phối vùng chứa, giao tiếp với các Plugin sử dụng các RPC dịch vụ CSI.
-<img src="./imgs/co.png">
+
+    <img src="./imgs/co.png">
+
 - SP(Storage Provider): Nhà cung cấp bộ nhớ, nhà cung cấp triển khai plugin CSI.
 - RPC: Gọi thủ tục từ xa. Là cơ chế giao tiếp giữa 2 tiến trình. Thực hiện lời gọi thủ tục trên tiến trình khác giống như lời gọi thủ tục trong một tiến trình cục bộ. 
 - Node: Máy chủ lưu trữ nơi khối lượng công việc của người dùng sẽ chạy, có thể nhận dạng duy nhất từ ​​quan điểm của một Plugin bằng ID nút.
 - Plugin: một điểm cuối gRPC triển khai Dịch vụ CSI.
 - gRPC : một RPC framework giúp bạn kết nối giữa các service trong hệ thống, nó hỗ trợ load balancing, tracing, health checking và authentication hỗ trợ từ mobile, trình duyệt cho tới back-end service.
 - Workload: Đơn vị của "công việc" được lên lịch bởi một CO. Đây CÓ THỂ là một thùng chứa hoặc một tập hợp các thùng chứa.
+- Sidecar container: là một container riêng biệt chạy cùng với container chính. Hai container chia sẻ tài nguyên như lưu trữ pod và giao diện mạng. Sidecar container cho phép bạn nâng cao và mở rộng các chức năng của vùng chứa chính mà không cần phải sửa đổi cơ sở mã của nó. Ngoài ra, ứng dụng sidecar container có thể được phát triển bằng ngôn ngữ khác với ngôn ngữ của container chính, giúp tăng tính linh hoạt. 
+# A. Tìm Hiểu Về CSI 
 # 1. Container Storage Interface (CSI) là gì?
 - Giao diện lưu trữ vùng chứa (CSI) được phát triển như một tiêu chuẩn để hiển thị các hệ thống lưu trữ khối và lưu trữ tệp tùy theo khối lượng công việc được chứa trên các hệ thống điều phối vùng chứa (CO) như Kubernetes, Mesos, Nomad, Cloud Foundry.
 - CSI về cơ bản là một giao diện (interface) giữa khối lượng công việc vùng chứa (container workloads) và bộ lưu trữ của bên thứ ba hỗ trợ việc `tạo` và `cấu hình` bộ lưu trữ liên tục bên ngoài bộ điều phối, đầu vào/đầu ra (I / O) của nó và các chức năng nâng cao như snapshots và cloning.
@@ -271,5 +275,122 @@ CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity
 ## 3. Gỡ Lỗi
 - Gỡ lỗi và truy tìm được hỗ trợ bởi bên ngoài, Các phần bổ sung và phần mở rộng độc lập với CSI cho gRPC APIs, chẳng hạn như `OpenTracing`
 
+# B. CSI trong Kubernetes
+## 1. Kiến trúc tổng thể để tích hợp plug-ins CSI trên Kubernetes như sau:
 
+<img src="./imgs/csi-k8s.png">
+
+- Kiến trúc lưu trữ Kubernetes CSI bao gồm hai phần chính:
+  - Các thành phần bên ngoài Kubernetes (Kubernetes external components): Driver registrar, External provisioner và External attacher; ba thành phần này là từ hệ thống lưu trữ in-tree ban đầu của Kubernetes bị loại bỏ khỏi chức năng quản lý lưu trữ, trên thực tế, Kubernetes trong bộ điều khiển bên ngoài, họ xem kubernetes là THE API RESOURCE OBJECT.
+    - Driver registra: Đăng ký plugin với vùng chứa phụ của kubelet, thêm driver-customized NodeId vào Annotations của node và gọi phương thức GetNodeId của CSI bằng cách giao tiếp với dịch vụ Identity trên CSI.
+    - External provisioner: Một đối tượng PVC để xem Kubernetes và gọi các hoạt động CreateVolume và DeleteVolume của CSI.
+    - External attacher: được sử dụng cho Attach/Detach stage (tháo/đính kèm), Volume Attach/Detach tương ứng được thực hiện bởi việc theo dõi đối tượng VolumeAttachment của Kubernetes và việc gọi hành động ControllerPublish và ControllerUnpublish của CSI. Mount/Unmount stage (Gắn/Gỡ) của Volume không phải là thành phần bên ngoài, khi hoạt động Gắn (Mount) thực sự cần được thực hiện, kubelet sẽ trực tiếp gọi theo CSI Node service để hoàn thành hoạt động Gắn/Gỡ của Volume.
+  - CSI storage plug-in: Phần này là CSI plug-in, người phát triển cần thực hiện, tất cả chúng là các dịch vụ được thực hiện thông qua gRPC, và thường cung cấp các dịch vụ bằng tệp nhị phân, chủ yếu bao gồm 3 phần: CSI Identity, CSI Controller, CSI Node.
+    - CSI Identity: Chủ yếu được sử dụng để hiển thị thông tin của plug-in với bên ngoài và đảm bảo sức khỏe của plug-in.
+    ```
+    service Identity {
+    rpc GetPluginInfo(GetPluginInfoRequest)
+        returns (GetPluginInfoResponse) {}
+    rpc GetPluginCapabilities(GetPluginCapabilitiesRequest)
+        returns (GetPluginCapabilitiesResponse) {}
+    rpc Probe (ProbeRequest)
+        returns (ProbeResponse) {}
+    }
+    ```
+
+    - CSI Controller: chủ yếu thực hiện các giai đoạn cung cấp và đính kèm trong quá trình quản lý Volume, giai đoạn cung cấp đề cập đến quá trình tạo và xóa Volume, và giai đoạn đính kèm đề cập đến quá trình đính kèm lưu trữ volume đến hoặc ngoài một node và chỉ CSI plugin của các loại lưu trữ khối mới yêu cầu chức năng đính kèm.
+    ```
+    service Controller {
+    rpc CreateVolume (CreateVolumeRequest)
+        returns (CreateVolumeResponse) {}
+
+    rpc DeleteVolume (DeleteVolumeRequest)
+        returns (DeleteVolumeResponse) {}
+
+    rpc ControllerPublishVolume (ControllerPublishVolumeRequest)
+        returns (ControllerPublishVolumeResponse) {}
+
+
+    rpc ControllerUnpublishVolume (ControllerUnpublishVolumeRequest)
+        returns (ControllerUnpublishVolumeResponse) {}
+
+
+    rpc ValidateVolumeCapabilities (ValidateVolumeCapabilitiesRequest)
+        returns (ValidateVolumeCapabilitiesResponse) {}
+
+
+    rpc ListVolumes (ListVolumesRequest)
+        returns (ListVolumesResponse) {}
+
+
+    rpc GetCapacity (GetCapacityRequest)
+        returns (GetCapacityResponse) {}
+
+
+    rpc ControllerGetCapabilities (ControllerGetCapabilitiesRequest)
+        returns (ControllerGetCapabilitiesResponse) {}
+
+    rpc CreateSnapshot (CreateSnapshotRequest)
+        returns (CreateSnapshotResponse) {}
+
+
+    rpc DeleteSnapshot (DeleteSnapshotRequest)
+        returns (DeleteSnapshotResponse) {}
+
+
+    rpc ListSnapshots (ListSnapshotsRequest)
+        returns (ListSnapshotsResponse) {}
+    }
+    ```
+
+    - CSI Node: Chịu trách nhiệm kiểm soát các hoạt động của Volume trên các node Kubernetes. Trong số đó, việc gắn Volume được chia thành hai giai đoạn: NodeStageVolume và NodePublishVolume. NodeStageVolume chủ yếu được cung cấp cho CSI plug-in của loại lưu trữ khối, sau khi thiết bị khối được đính kèm vào Node trong giai đoạn "Đính kèm" nó cần được gắn vào thư mục tương ứng của pod, nhưng vì thiết bị khối chỉ được gắn trong Linux và trong trường hợp sử dụng của Kubernetes volume, một volume có thể được gắn vào nhiều Pod trong cùng Node, vì thế NodeStageVolume được cung cấp để sử dụng nó để định dạng thiết bị khối và sau đó gắn nó vào một thư mục tạm thời trên Node và sau đó gọi NodePublishVolume để gắn thư mục đó vào thư mục tương ứng trong Pod sử dụng linux.
+    ```
+    service Node {
+    rpc NodeStageVolume (NodeStageVolumeRequest)
+        returns (NodeStageVolumeResponse) {}
+
+
+    rpc NodeUnstageVolume (NodeUnstageVolumeRequest)
+        returns (NodeUnstageVolumeResponse) {}
+
+
+    rpc NodePublishVolume (NodePublishVolumeRequest)
+        returns (NodePublishVolumeResponse) {}
+
+
+    rpc NodeUnpublishVolume (NodeUnpublishVolumeRequest)
+        returns (NodeUnpublishVolumeResponse) {}
+
+
+    rpc NodeGetVolumeStats (NodeGetVolumeStatsRequest)
+        returns (NodeGetVolumeStatsResponse) {}
+
+ 
+    rpc NodeGetId (NodeGetIdRequest)
+        returns (NodeGetIdResponse) {
+        option deprecated = true;
+    }
+
+
+    rpc NodeGetCapabilities (NodeGetCapabilitiesRequest)
+        returns (NodeGetCapabilitiesResponse) {}
+
+
+    rpc NodeGetInfo (NodeGetInfoRequest)
+        returns (NodeGetInfoResponse) {}
+    }
+    ```
+
+## 2. Mô hình triển khai được CSI khuyên nghị.
+
+    <img src="./imgs/csi_k8s.png">
+
+- Mỗi StatefulSet/Deployment Pod có thể được xem là csi-controller, cung cấp `perspective` dịch vụ lưu trữ để quản lý và vận hành trên nguồn lưu trữ và volume lưu trữ. Nó được khuyến nghị trong kubernetes triển khai chúng dước dạng các pod đơn lẻ, có thể được triển khai bằng việc sử dụng StatefulSet hoặc The Deployment controller, cài đặt số lượng replicas là 1, đảm bảo rằng chỉ có một phiên bản controller đang chạy cho một plug-in lưu trữ.
+  - CSI plug-in do người dùng triển khai
+  - Một sidecar container phụ trợ giao tiếp với Master (kube-controller-manager)
+    - external-attacher: Kubernetes cung cấp một sidecar container lắng nghe sự thay đổi trong đối tượng VolumeAttachment và PersitentVolume và gọi các API như controllerPublishVolume và ControllerUnpublishVolume của CSI plug-in để gắn hoặc giảm tải Volume tới Node chỉ định, đó là hoạt động Attach/Detach tương ứng, bởi vì K8s PV controller không thể trực tiếp gọi các chức năng liên quan của Volume Plugins nên nó được gọi bởi External Attacher thông qua gRPC.
+    - external-provisioner: Kubernetes cung cấp một sidecar container lắng nghe sự thay đổi trong đối tượng PersitentVolumeClaim và gọi các API như controllerPublish và ControllerUnpublish của CSI plug-in để quản lí volume, nó được biết đến là hoạt động Provision/Delete, bởi vì K8s PV controller không thể trực tiếp gọi các chức năng liên quan của Volume Plugins nên nó được gọi bởi External Provioner thông qua gRPC.
+  - Hai container giao tiếp thông qua native Socket (Unix DomainSocket, UDS) và sử dụng giao thức gRPC.
+  - Sidecar container gọi giao diện CSI của CSI Driver container thông qua Socket và CSI Driver container chịu trách nhiệm về hoạt động lưu trữ volume cụ thể.
+- Một Daemonset Pod bên trái: quản lý và vận hành Volume trên node. Phần CSI Node được triển khai dưới dạng DaemonSet. 
 
