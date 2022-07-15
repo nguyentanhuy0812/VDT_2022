@@ -383,7 +383,8 @@ CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity
 
 ## 2. Mô hình triển khai được CSI khuyên nghị.
 
-    <img src="./imgs/csi_k8s.png">
+
+  <img src="./imgs/csi_k8s.png">
 
 - Mỗi StatefulSet/Deployment Pod có thể được xem là csi-controller, cung cấp `perspective` dịch vụ lưu trữ để quản lý và vận hành trên nguồn lưu trữ và volume lưu trữ. Nó được khuyến nghị trong kubernetes triển khai chúng dước dạng các pod đơn lẻ, có thể được triển khai bằng việc sử dụng StatefulSet hoặc The Deployment controller, cài đặt số lượng replicas là 1, đảm bảo rằng chỉ có một phiên bản controller đang chạy cho một plug-in lưu trữ.
   - CSI plug-in do người dùng triển khai
