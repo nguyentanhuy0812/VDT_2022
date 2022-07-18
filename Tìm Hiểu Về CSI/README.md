@@ -395,3 +395,7 @@ CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity
   - Sidecar container gọi giao diện CSI của CSI Driver container thông qua Socket và CSI Driver container chịu trách nhiệm về hoạt động lưu trữ volume cụ thể.
 - Một Daemonset Pod bên trái: quản lý và vận hành Volume trên node. Phần CSI Node được triển khai dưới dạng DaemonSet. 
 
+# C. Tài liệu tham khảo
+[1] https://github.com/container-storage-interface/spec/blob/master/spec.md
+[2] https://cloud.netapp.com/blog/cvo-blg-kubernetes-csi-basics-of-csi-volumes-and-how-to-build-a-csi-driver
+[3] https://idan-atias.medium.com/introduction-to-container-storage-interface-csi-f53ccb613805
