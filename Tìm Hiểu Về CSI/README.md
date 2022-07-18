@@ -397,5 +397,7 @@ CO không nên gọi NodePublishVolume lần thứ hai với volume_capabilitity
 
 # C. Tài liệu tham khảo
 [1] https://github.com/container-storage-interface/spec/blob/master/spec.md
+
 [2] https://cloud.netapp.com/blog/cvo-blg-kubernetes-csi-basics-of-csi-volumes-and-how-to-build-a-csi-driver
+
 [3] https://idan-atias.medium.com/introduction-to-container-storage-interface-csi-f53ccb613805
