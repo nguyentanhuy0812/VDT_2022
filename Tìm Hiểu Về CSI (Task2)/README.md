@@ -55,14 +55,6 @@ Nếu delete thành công thì Plugin sẽ phản hồi `0 OK` với `DeleteVolu
 
 # 3. Cách implemment Driver
 
-
-# 4. Dựng NFS server ở local, cài minikube, cài nfs csi https://github.com/kubernetes-csi/csi-driver-nfs test thử các action
-
-## 4.1. NFS là gì?
-- NFS (Network File System) là một hệ thống giao thức chia sẻ file phát triển bởi Sun Microsystems từ năm 1984, cho phép người dùng trên một máy tính khách truy cập tới hệ thống file chia sẻ thông qua một mạng máy tính giống như truy cập trực tiếp trên ổ cứng.
-
-### 4.2. Triển khai NFS server trên K8s.
-
 # 5. Làm rõ từng chức năng của từng CSI service
 ## 5.1 Controller Service : Quản lý và điều khiển volumes: tạo, xóa, attach/detach, snapshot, ...
 ```
