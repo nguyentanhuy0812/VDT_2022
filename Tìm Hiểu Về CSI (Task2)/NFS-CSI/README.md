@@ -16,7 +16,7 @@
 ## 4.2. Triển khai NFS server trên K8s.
 - Ở Lab này em sử dụng máy ảo Ubuntu 20.04 đã được cài đặt `minikube` và `kubectl`
 
-## Step 1: Install NFS CSI Driver v4.1.0 version on Kubernetes cluster
+## 1. Install NFS CSI Driver v4.1.0 version on Kubernetes cluster
 - Tạo các file: 
     - rbac-csi-nfs.yaml
     - csi-nfs-driverinfo.yaml
@@ -44,7 +44,7 @@
 
     <img src="./img/check-pods.png">
 
-## Step 2: Set up a NFS Server on a Kubernetes cluster
+## 2. Set up a NFS Server on a Kubernetes cluster
 
 - Tạo file `nfs-server.yaml`
 - Apply file bằng câu lệnh:
@@ -53,3 +53,51 @@
     ```
 
 --> service `nfs-server` được tạo.
+
+## Storage Class Usage (Dynamic Provisioning)
+### 3. Create a Storage Class
+
+- tạo file `nfs-sc.yaml`
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-csi
+provisioner: nfs.csi.k8s.io
+parameters:
+  server: nfs-server.default.svc.cluster.local
+  share: /
+  # csi.storage.k8s.io/provisioner-secret is only needed for providing mountOptions in DeleteVolume
+  # csi.storage.k8s.io/provisioner-secret-name: "mount-options"
+  # csi.storage.k8s.io/provisioner-secret-namespace: "default"
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+mountOptions:
+  - nconnect=8  # only supported on linux kernel version >= 5.3
+  - nfsvers=4.1
+```
+
+- Apply file:
+    ```
+    kubectl apply -f nfs-sc.yaml
+    ```
+### 4: Tạo PVC
+``` 
+    kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/pvc-nfs-csi-dynamic.yaml
+```
+
+## PV/PVC Usage (Static Provisioning)
+
+- Tạo PV
+    ```
+    kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/pv-nfs-csi.yaml
+    ```
+- Tạo PVC
+    ```
+    kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/pvc-nfs-csi-static.yaml
+    ```
+
+- Tạo a deployment
+    ```
+    kubectl create -f https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/deploy/example/deployment.yaml
+    ```
