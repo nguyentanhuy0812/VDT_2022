@@ -51,10 +51,27 @@ Nếu detach thành công thì Plugin sẽ phản hồi `0 OK` với `Controller
 Nếu delete thành công thì Plugin sẽ phản hồi `0 OK` với `DeleteVolumeResponse`.
 
 # 2. Các hành động tổi thiểu cần implement khi viết CSI Driver
+- Bước đầu tiên để tạo một CSI Driver là viết một ứng dụng triển khai các dịch vụ gRPC được làm rõ ở `phần 5`
+- Tối thiểu, CSI Driver phải thực hiện các dịch vụ CSI sau đây:
+  - CSI `Identity` service: cho phép người gọi (các thành phần của K8s và vùng chứa CSI sidecar) xác định driver và chức năng tùy chọn mà nó hỗ trợ.
+  - CSI `Node` service: 
+    - `NodePublishVolume`, `NodeUnpublishVolume`, `NodeGetCapabilities` là bắt buộc.
+    - Các phương thức bắt buộc cho phép người gọi làm một volume có sẵn trong một đường dẫn cụ thể và biết được chức năng nào driver hỗ trợ.
+- Tất cả các dịch vụ CSI có thể được triển khai trong cùng một ứng dụng CSI driver. Ứng dụng CSI driver nên được đóng gói để dễ triển khai trong K8s. Sau khi được đóng gói, CSI driver có thể được ghép nối với CSI `Sidecar Container` và được triển khai ở chế độ node hoặc controller.  
 
 
+## ``Trả lời câu hỏi: Tại sao sử dụng gRPC mà không phải REST API?`` 
+
+Lí do gRPC sử dụng binary trong đóng gói dữ liệu để truyền thông (protobuf), còn Restf thì tự do, bạn tự chọn (thường là text-based: xml hoặc json).
+
+Nên gRPC thường có tốc độ cao và độ trễ thấp hơn. 
+
+## ``Sidecar Container là gì ``
+
+Sidecar container: là một container riêng biệt chạy cùng với container chính. Hai container chia sẻ tài nguyên như lưu trữ pod và giao diện mạng. Sidecar container cho phép bạn nâng cao và mở rộng các chức năng của vùng chứa chính mà không cần phải sửa đổi cơ sở mã của nó. Ngoài ra, ứng dụng sidecar container có thể được phát triển bằng ngôn ngữ khác với ngôn ngữ của container chính, giúp tăng tính linh hoạt.
+
+Trong K8s, các sidecar container bao gồm một driver registrar, external attacher, external provisioner và external snapshotter.
 # 3. Cách implemment Driver
-
 # 5. Làm rõ từng chức năng của từng CSI service
 ## 5.1 Controller Service : Quản lý và điều khiển volumes: tạo, xóa, attach/detach, snapshot, ...
 ```
