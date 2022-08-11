@@ -61,25 +61,26 @@ name]``
 # 2. Kubebuilder
 
 - Kubebuilder là một framework để xây dựng K8s API sử dụng CRDs.
+- Kubebuilder có thể mở rộng và có thể được sử dụng như một thư viện trong các dự án khác.
 
 # 3. Cluster API: Kiến trúc, mô hình mạng, các loại controller: core, boostrap, control-plane, infrastructure và chức năng của từng cái, sơ đồ tương tác giữa các thành phần, future work
 - Cluster API là một dự án con của Kubernetes tập trung vào việc cung cấp các declarative APIs và công cụ để đơn giản hóa việc cung cấp, nâng cấp và vận hành nhiều cụm Kubernetes.
-- 
+
 ## 3.1 Kiến trúc
+
 ## 3.2 Mô hình mạng
+
 ## 3.3 Các loại Controller
+
 ## 3.4 Sơ đồ tương tác
+
 ## 3.5 Future work.
 
 # 4. Gardener architecture
 
-
-
-
-
 - Ref:
     - [1] [CRD](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#:~:text=The%20CustomResourceDefinition%20API%20resource%20allows,a%20valid%20DNS%20subdomain%20name.) 
-    - [2] [Kubebuilder] (https://github.com/kubernetes-sigs/kubebuilder)
+    - [2] [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
     - [3] [Custom resource](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
     - [4] [Custom Controller](https://github.com/kubernetes/sample-controller)
     - [5] [Extend K8s API with CRD](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/)
