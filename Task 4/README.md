@@ -78,6 +78,34 @@
     ```
         kubectl get pvc
     ```
-    
+
+- Bug: 
+    ```
+    get pvc
+    ```
+    <img src="./imgs/f.png">
+
+    ```
+        kubectl describe pvc snapshot-demo-restore
+    ```
+
+    <img src="./imgs/snapshot1.png">
+
+# 4. Test Using Block Volume
+- Triển khai app mẫu:
+    ```
+        kubectl create -f block.yaml
+    ```
+
+- Check Pod:
+    ```
+        kubectl get pods
+    ```
+
+- Check xem node được mounted vào bên trong container chưa:
+
+    <img src="./imgs/block.png">
+
+# 5. 
 # Ref
 [1] [Setup-Cinder-csi](https://github.com/kubernetes/cloud-provider-openstack/tree/master/manifests/cinder-csi-plugin)
