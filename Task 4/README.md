@@ -43,6 +43,16 @@
         kubectl api-resources | grep volumesnapshot
         ```
         <img src="./imgs/vscrd.png">
+- Cài đặt `snapshot controller`:
+    - Tạo các file:    `rbac-snapshot-controller.yaml` và `setup-snapshot-controller.yaml`
+    - Apply các file: `kubectl apply -f`
+    - Kết quả:
+        ```
+        kubectl get pods -A
+        ```
+
+        <img src="./imgs/pods.png">
+ 
 - Các file cần chuẩn bị: 
     - example.yaml
     - snapshotcreate.yaml
