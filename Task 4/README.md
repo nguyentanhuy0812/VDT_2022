@@ -26,8 +26,21 @@
 
     <img src="./imgs/pvc2.png">
 
-- Describe `pvc`
-    <img src="./imgs/pvc1.png">
+- Kiểm tra volume đã được tạo và attach vào pod
+
+    ```
+        $ ls /dev/vdb
+        $ mount | grep vdb
+        $ fdisk -l /dev/vdb | grep Disk
+    ```
+
+    <img src="./imgs/mount.png">
+
+- Thử add file vào vị trí mount của pod:
+
+    <img src="./imgs/tryaddfile.png">
+
+
 
 # 3. Test Snapshot Create and Restore
 - Trước hết ta cần cài đặt VolumeSnapshot CRDs.
@@ -78,7 +91,7 @@
         kubectl get volumesnapshot
     ```
 
-    <img src="./imgs/snapshotcheck.png">
+    <img src="./imgs/volumesnapshot.png">
 
 - Restore volume từ snapshot
     ```
@@ -89,17 +102,7 @@
         kubectl get pvc
     ```
 
-- Bug: 
-    ```
-    get pvc
-    ```
-    <img src="./imgs/f.png">
-
-    ```
-        kubectl describe pvc snapshot-demo-restore
-    ```
-
-    <img src="./imgs/snapshot1.png">
+    <img src="./imgs/pvccheck.png">
 
 # 4. Test Using Block Volume
 - Triển khai app mẫu:
@@ -116,6 +119,68 @@
 
     <img src="./imgs/block.png">
 
-# 5. 
+# 5. Test Inline Volumes
+
+- Create a pod with inline volume
+    ```
+        kubectl apply -f csi-ephemeral-volumes-example.yaml
+    ```
+
+- Get the pod description, verify created volume in Volumes section
+
+    ```
+        kubectl describe pod inline-pod
+    ```
+
+    <img src="./imgs/inline-pod.png">
+
+# 6. Test Volume Expansion Example
+
+- Sample App definition for volume resize: `sampleapp.yaml`
+
+- Deploy Sample App:
+    ```
+        kubectl apply -f sampleapp.yaml
+    ```
+- Verify PV is created and bound to PVC
+    
+    ```
+        kubectl get pvc
+    ```
+
+- Check Pod is in `Running` state
+
+    ```
+        kubectl get pods 
+    ```
+- Check current filesystem size on the running pod
+    ```
+         kubectl exec nginx -- df -h /var/lib/www/html
+    ```
+
+    <img src="./imgs/checksize.png">
+- Resize volume by modifying the field `spec -> resources -> requests -> storage`
+    ```
+        kubectl edit pvc csi-pvc-cinderplugin
+    ```
+
+    <img src="./imgs/editpvc.png">
+
+- Verify filesystem resized on the running pod
+    ```
+        kubectl exec nginx -- df -h /var/lib/www/html
+    ```
+    <img src="./imgs/checkresize.png">
+- Describe pod to see events:
+    ```
+        kubectl describe pod nginx
+    ```
+
+    <img src="./imgs/podresize.png">
+
+
+
 # Ref
 [1] [Setup-Cinder-csi](https://github.com/kubernetes/cloud-provider-openstack/tree/master/manifests/cinder-csi-plugin)
+
+[2] [Test](https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/cinder-csi-plugin/examples.md#dynamic-volume-provisioning)

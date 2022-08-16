@@ -1,0 +1,41 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-sc-cinderplugin
+provisioner: cinder.csi.openstack.org
+allowVolumeExpansion: true
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-pvc-cinderplugin
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-sc-cinderplugin
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx1
+spec:
+  containers:
+  - image: 10.60.129.132:8890/nginx
+    imagePullPolicy: IfNotPresent
+    name: nginx1
+    ports:
+    - containerPort: 80
+      protocol: TCP
+    volumeMounts:
+      - mountPath: /var/lib/www/html
+        name: csi-data-cinderplugin
+  volumes:
+  - name: csi-data-cinderplugin
+    persistentVolumeClaim:
+      claimName: csi-pvc-cinderplugin
+      readOnly: false

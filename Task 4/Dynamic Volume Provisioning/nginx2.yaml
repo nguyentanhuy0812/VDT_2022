@@ -11,7 +11,7 @@ provisioner: cinder.csi.openstack.org
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: csi-pvc-cinderplugin
+  name: csi-pvc-cinderplugin2
 spec:
   accessModes:
   - ReadWriteOnce
@@ -24,10 +24,10 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx
+  name: nginx1
 spec:
   containers:
-  - image: nginx
+  - image: 10.60.129.132:8890/nginx
     imagePullPolicy: IfNotPresent
     name: nginx
     ports:
@@ -39,5 +39,5 @@ spec:
   volumes:
   - name: csi-data-cinderplugin
     persistentVolumeClaim:
-      claimName: csi-pvc-cinderplugin
+      claimName: csi-pvc-cinderplugin2
       readOnly: false
