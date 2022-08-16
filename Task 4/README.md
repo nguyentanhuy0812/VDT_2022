@@ -40,7 +40,11 @@
 
     <img src="./imgs/tryaddfile.png">
 
-
+- Xóa pod:
+    ```
+        kubectl delete pod nginx1
+    ```
+- Sau đó volume sẽ ở trạng thái available
 
 # 3. Test Snapshot Create and Restore
 - Trước hết ta cần cài đặt VolumeSnapshot CRDs.
@@ -178,7 +182,10 @@
 
     <img src="./imgs/podresize.png">
 
+    <img src="./imgs/nginx--df-h.png">
 
+
+    <img src="./imgs/nginx--lsblk.png">
 
 # Ref
 [1] [Setup-Cinder-csi](https://github.com/kubernetes/cloud-provider-openstack/tree/master/manifests/cinder-csi-plugin)
