@@ -44,3 +44,7 @@ VDT_2022
     - Using Block Volume
     - Snapshot Create and Restore
 
+### 5. Task 5: 25/8/2022
+- Mối liên hệ repo vs release
+- Code tương đương vs câu lệnh helm
+- Chỉnh code, test thử
