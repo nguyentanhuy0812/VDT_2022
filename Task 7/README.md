@@ -4,11 +4,11 @@
 1. Anti-pattern
 - Các giải pháp được tái sử dụng và được cho là đem lại lợi ích và hiệu quả ở ban đầu nhưng lại dần dần có lại nhiều hơn lợi được gọi là Anti-pattern.
 
-3. Production Environment: Đây là môi trường “thần thánh”, chứa ứng dụng thật đang chạy, với người dùng thật, dữ liệu thật. 
+3. Production Environment: Đây là môi trường chứa ứng dụng thật đang chạy, với người dùng thật, dữ liệu thật. 
 
 # A. Chúng ta sẽ khám phá các kỹ thuật hữu ích để cải thiện khả năng phục hồi và tính sẵn sàng cao của việc triển khai Kubernetes và sẽ xem xét một số lỗi phổ biến cần tránh khi làm việc với Docker và Kubernetes.
 
-## 1.2 Anti-Pattern: Mixing Build And Runtime
+## 1.1 Anti-Pattern: Mixing Build And Runtime
 - Anti-pattern phổ biến khi làm việc với Docker Images, khi viết Dockerfiles cho images là mix build và runtime environments trong cùng 1 image.
 - Ví dụ: Dockerfile:
 
@@ -69,7 +69,7 @@
 - 
 
 
-## 1.3 Anti Pattern: Zombies And Orphans
+## 1.2 Anti Pattern: Zombies And Orphans
 
 - Để tiến trình orphaned chạy ở background.
 
@@ -111,7 +111,7 @@ Các kỹ sư Yelp xây dựng a simple and lightweight init system, `dumb-init`
     $ docker run quay.io/gravitational/debian-tall /usr/bin/dumb-init /bin/sh -c "sleep 10000"
 ```
 
-## 1.4 Anti Pattern: Direct Use Of Pods
+## 1.3 Anti Pattern: Direct Use Of Pods
 
 - Kubernetes Pod là một khối xây dựng mà bản thân nó không cung cấp bất kỳ sự đảm bảo nào về độ bền. Như các tài liệu của Kubernetes nói, một pod sẽ không thể tồn tại khi bị lỗi lập lịch, lỗi node hoặc các trường hợp bị trục xuất khác, chẳng hạn như do thiếu tài nguyên.
  
@@ -124,28 +124,28 @@ Các kỹ sư Yelp xây dựng a simple and lightweight init system, `dumb-init`
 
 - Khi xóa pod thì nó sẽ lập lịch lại.
 
-## 1.5 Anti Pattern: Using Background Processes
+## 1.4 Anti Pattern: Using Background Processes
 
 - `Tình huống`: Khi chạy một Web server bên trong 1 container. Trường hợp Web server bị lỗi không chạy được nhưng container vẫn chạy.
 - `Giải pháp`: Sử dụng Liveness Probes. Liveness probe kiểm tra sức khỏe của container như mình đã nói, và nếu vì lý do nào đó, Liveness probe không thành công, nó sẽ khởi động lại container.
 
 <img src="./imgs/livenessprobes.png">
 
-## 1.6 Production Pattern: Logging
+## 1.5 Production Pattern: Logging
 - Khi định cấu hình logging cho ứng dụng đang chạy bên trong container, cần đảm bảo logs chuyển đến đầu ra tiêu chuẩn:
     
     <img src="./imgs/logs.png">
 
 - Kubernetes và Docker có một hệ thống các plugin để đảm bảo logs được gửi đến `stdout` và `stderr` sẽ được thu thập, chuyển tiếp và xoay vòng.
 
-## 1.7 Production Pattern: Immutable Containers
+## 1.6 Production Pattern: Immutable Containers
 
 - Mỗi khi bạn ghi nội dung nào đó vào hệ thống tệp của vùng chứa, nó sẽ kích hoạt `copy-on-write strategy`. Cách tiếp cận này làm cho các container hiệu quả.
 - Cách thức hoạt động: tất cả các layer trong 1 Docker image là read-only. Khi một container bắt đầu, một lớp mỏng có thể ghi được thêm vào bên trên các lớp read-only khác của nó. Bất kỳ sự thay đổi nào mà container thực hiện đối với filesystem đều được lưu lại ở đây và các file không thay đổi sẽ kh được sao chép vào layer ghi, điều này làm nó nhỏ nhất có thể.
 - Khi một file trong container bị thay đổi, driver lưu trữ 
 
 
-## 1.8 Anti-Pattern: Using `latest` Tag
+## 1.7 Anti-Pattern: Using `latest` Tag
 
 - Không nên dùng tag `latest` trong production vì nó gây ra sự mơ hồ, không rõ đây là phiên bản thwujc của ứng dụng.
 
@@ -165,13 +165,13 @@ spec:
     imagePullPolicy: Always
 ```
 
-## 1.9 Production Pattern: Pod Readiness
+## 1.8 Production Pattern: Pod Readiness
 - Hãy để tưởng tượng rằng ứng dụng của bạn mất một phút để warm up và start.
 - Dịch vụ của bạn sẽ không hoạt động cho đến khi nó up và running, mặc dù process đã hoặt động. Nghĩa là mặc dù thấy đã chạy rồi nhưng thực tế là hoạt động chưa OK. Hoặc bạn cũng gặp vấn đề khi scale up deployment để có thêm nhiều bản sao. một Pod (bảo sao) mới không nên nhận traffic cho đến khi nó thật sự sẵn sàng, nhưng theo mặc định thì Kubernetes sẽ gửi traffic ngay khi container starts.
 - Bằng cách sử dụng readiness probe, Kubernetes sẽ đợi cho đến khi ứng dụng được khởi động hoàn toàn (ở trạng thái có thể nhận traffic) trước khi cho phép service gửi traffic đến Pod mới.
 
 https://blog.vietnamlab.vn/kubernetes-best-practice-p2-application-process-management-with-poststart-and-prestop-hook/
-## 1.10 Anti-Pattern: Unbound Quickly Failing Jobs
+## 1.9 Anti-Pattern: Unbound Quickly Failing Jobs
 - Kubernetes cung cấp công cụ hữu ích mới để lập lịch các vùng chứa thực hiện tác vụ một lần: jobs (https://kubernetes.io/docs/concepts/workloads/controllers/job/)
 - Tuy nhiên, có vấn đề ở đây: 
 ```
@@ -243,7 +243,7 @@ spec:
 ```
 - Sau 30 giây, job fail và không có pod nào được tạo mới nữa.
 
-## 1.11 Production Pattern: Pod Quotas
+## 1.10 Production Pattern: Pod Quotas
 - Một trong những tính năng quan trọng của Kubernetes là quản lý tài nguyên. Kubernetes cho phép bạn định cấu hình hạn ngạch tài nguyên CPU / RAM cho các vùng chứa để đảm bảo rằng không một vùng chứa nào có thể strarve toàn bộ hệ thống.
 
 - Giả sử chúng ta có một vùng chứa có xu hướng làm mất bộ nhớ:
@@ -263,7 +263,7 @@ quota                       0/1     OOMKilled          1          4s
 
 - Kubernetes cũng cho phép bạn định cấu hình hạn ngạch cho mỗi namespace và sử dụng thuật toán lập lịch thông minh để đảm bảo rằng các pod được phân phối trên các cluster node một cách thích hợp. Ví dụ, nó sẽ không lên lịch một pod trên một node nếu yêu cầu hạn ngạch của pod đó vượt quá tài nguyên có sẵn trên node.
 
-## 1.12 Anti-Pattern: Putting Configuration Inside Image
+## 1.11 Anti-Pattern: Putting Configuration Inside Image
 
 - Thường thì mỗi application cần một file config để chạy.
 - Khi đặt file config và chương trình trong cùng một container gây ra một số hạn chế. Ví dụ như khi muốn update file config trong khi container đang chạy.
@@ -283,7 +283,7 @@ $ docker push $registry:5000/config:0.0.1
 $ kubectl delete -f pod.yaml
 $ kubectl create -f pod-fix.yaml
 ```
-## 1.13 Production Pattern: Circuit Breaker
+## 1.12 Production Pattern: Circuit Breaker
 
 - Circuit Breaker là một phần mềm trung gian đặc biệt được thiết kế để cung cấp một hành động dự phòng trong trường hợp nếu dịch vụ đã xuống cấp. Sẽ rất hữu ích để ngăn chặn các lỗi xếp tầng - trong đó sự thất bại của một dịch vụ này dẫn đến sự thất bại của một dịch vụ khác. Circuit Breaker quan sát số liệu thống kê yêu cầu và kiểm tra số liệu thống kê đối với tình trạng lỗi đặc biệt.
 
@@ -293,7 +293,7 @@ $ kubectl create -f pod-fix.yaml
 
 - Trong trường hợp nếu điều kiện phù hợp, CB sẽ kích hoạt kịch bản dự phòng: trả về mã phản hồi hoặc chuyển hướng yêu cầu đến giao diện người dùng khác.
 
-## 1.14 Production Pattern: Sidecar For Rate And Connection Limiting
+## 1.13 Production Pattern: Sidecar For Rate And Connection Limiting
 - Một sidecar là một container được sắp xếp theo vị trí với các container khác trong cùng một pod, bổ sung thêm logic cho service, chẳng hạn như phát hiện lỗi, kết thúc TLS và các tính năng khác.
 
 - Dưới đây là một ví dụ về proxy nginx sidecar bổ sung giới hạn tốc độ và kết nối:
