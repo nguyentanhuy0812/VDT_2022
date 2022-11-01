@@ -69,3 +69,48 @@
     ```
 - CRS sẽ sử dụng CRSB để quyết định có apply 1 resource mới hay thử lại resource cũ. Khi apply fail, CRS controller sẽ reconcile và sử dụng `controller-runtime` back-off để thử apply lại. Khi ta thêm một resource mới vào CRS, CRS đó sẽ được reconcile ngay lập tức và resource mới sẽ được apply vào tất cả các matching cluster vì resource mới kh tồn tại trong danh sách CRB. 
 https://github.com/kubernetes-sigs/cluster-api/blob/main/docs/proposals/20200220-cluster-resource-set.md#proposal
+
+# 2. Building CronJob
+## 2.1 Chuẩn bị
+- Cài môi trường Golang
+- Cài Docker
+- Cài kubectl
+- Cài kubebuilder
+- Tạo kết nối tới 1 cluster K8s
+## 2.2 Thực hiện
+### Step 1: Tạo folder Project
+```
+    mkdir project
+    cd project
+    kubebuilder init --domain tutorial.kubebuilder.io --repo tutorial.kubebuilder.io/project
+```
+### Step 2: Tạo CRD mới (Adding a New API)
+```
+    kubebuilder create api --group batch --version v1 --kind CronJob
+``` 
+- Tiến hành hoàn thiện file cronjob_types.go (nơi định nghĩa model của object)
+- Cần quan tâm đến CronJobSpec và CronJobStatus
+### Step 3: Tạo logic Controller
+- Hoàn thiện file   `cronjob_controller.go`
+
+- Tập trung vào 2 func() chính:
+    - Reconcile(): là hàm sẽ chạy khi có message trong queue mà controller đã đăng ký. Nó giống như một hàm callback khi có sự kiện xảy ra với object mà ta đã đăng ký ở hàm SetupWithManager() ở dưới
+    - SetupWithManager(): là hàm đăng ký manager, có chức năng định nghĩa ra các object mà controller sẽ theo dõi sự thay đổi. Mỗi controller có thể watch một object chính và các object liên quan. Nhưng khi trigger sự kiện thì input của hệ thống sẽ chỉ trả về tên object chính và namespace của nó vì thế phải dùng rất cẩn thận, tránh việc theo dõi các loại object không cần thiết, hoặc care quá nhiều object trong một controller.
+
+### Step 4: Triển khai.
+- Project được gen ra đã chứa một file Makefile chứa rất nhiều lựa chọn để từng bước build, gen manifest đến triển khai trên K8S.
+- Trong đó:
+
+    - make manifests: sẽ gen tất cả các manifest của CRD mà mình đã định nghĩa trong các model
+    - make install:  apply các file manifest do quá trình make manifests tạo ra
+    - make docker-build: build controller thành docker image
+    - make deploy: triển khai controller lên K8S
+    ...
+
+- Ví dụ:
+
+    - Khi debug chương trình:  make manifests  ==> make install  ==> make run
+    - Khi release lên k8s: make manifests  ==> make install ==> make docker-build ==> make deploy
+
+# Ref
+[1] [CronJob](https://book.kubebuilder.io/cronjob-tutorial/new-api.html)

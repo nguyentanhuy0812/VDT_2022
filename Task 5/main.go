@@ -237,6 +237,3 @@ func debug(format string, v ...interface{}) {
 	log.Output(2, fmt.Sprintf(format, v...))
 }
 
-func UninstallRelease() {
-
-}
