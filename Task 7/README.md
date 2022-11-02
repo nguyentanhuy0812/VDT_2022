@@ -3,7 +3,7 @@
 
 # Tìm hiểu các kỹ thuật hữu ích để cải thiện resiliency và HA của việc triển khai Kubernetes và đưa ra một số lỗi phổ biến cần tránh khi làm việc với Docker và Kubernetes.
 
-## AAnti-Pattern
+## A. Anti-Pattern
 
 ### 1 Anti-Pattern: Mixing Build And Runtime
 
@@ -193,7 +193,7 @@ data:
     ui.color1=red
     ui.color2=green
 ```
-## 2.Production Pattern
+## B.Production Pattern
 
 ### 1 Production Pattern: Logging
 - Khi định cấu hình logging cho ứng dụng đang chạy bên trong container, cần đảm bảo bắn ra logs:
